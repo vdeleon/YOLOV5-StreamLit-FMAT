@@ -13,6 +13,67 @@ cfg_model_path = 'models/facemask.pt'
 model = None
 confidence = .25
 
+def webcam_input():
+    st.title("Webcam Object Recognition")
+
+    # device options
+    if torch.cuda.is_available():
+        device_option = st.sidebar.radio("Select Device", ['cpu', 'cuda'], key="device_radio", index=0)
+    else:
+        st.sidebar.warning("GPU not available. Using CPU.")
+        device_option = 'cpu'
+
+    # custom size sliders
+    width_key = "width_slider"  # Unique key for width slider
+    height_key = "height_slider"  # Unique key for height slider
+    fps_key = "fps_slider"  # Unique key for fps slider
+
+    custom_size = st.sidebar.checkbox("Custom frame size")
+    width, height = 640, 480  # Default frame size
+
+    if custom_size:
+        width = st.sidebar.number_input("Width", min_value=120, step=20, value=width, key=width_key)
+        height = st.sidebar.number_input("Height", min_value=120, step=20, value=height, key=height_key)
+
+    fps = 0
+    st1, st2, st3 = st.columns(3)
+    with st1:
+        st.markdown("## Height")
+        st1_text = st.markdown(f"{height}")
+    with st2:
+        st.markdown("## Width")
+        st2_text = st.markdown(f"{width}")
+    with st3:
+        st.markdown("## FPS")
+        st3_text = st.markdown(f"{fps}")
+
+    st.markdown("---")
+    output = st.empty()
+    prev_time = 0
+    curr_time = 0
+
+    # Define the VideoCapture object (cap)
+    cap = cv2.VideoCapture(0)  # 0 corresponds to the default webcam
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            st.write("Can't read frame, stream ended? Exiting ....")
+            break
+
+        frame = cv2.resize(frame, (width, height))
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        output_img = infer_image(frame)
+        output.image(output_img)
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time)
+        prev_time = curr_time
+        st1_text.markdown(f"**{height}**")
+        st2_text.markdown(f"**{width}**")
+        st3_text.markdown(f"**{fps:.2f}**")
+
+    cap.release()
+
 
 def image_input(data_src):
     img_file = None
@@ -39,10 +100,10 @@ def image_input(data_src):
 def video_input(data_src):
     vid_file = None
     if data_src == 'Sample data':
-        # get all sample images
-        img_path = glob.glob('data/sample_images/*')
-        img_slider = st.slider("Select a test image.", min_value=1, max_value=len(img_path), step=1)
-        img_file = img_path[img_slider - 1]
+        vid_path = glob.glob('data/sample_videos/*')
+        vid_slider = st.slider("Select a video.", min_value=1, max_value=len(vid_path), step=1)
+        vid_file = vid_path[vid_slider - 1]
+        #vid_file = "data/sample_videos/sample.mp4"
     else:
         vid_bytes = st.sidebar.file_uploader("Upload a video", type=['mp4', 'mpv', 'avi'])
         if vid_bytes:
@@ -143,7 +204,7 @@ def main():
     st.sidebar.title("Settings")
 
     # upload model
-    model_src = st.sidebar.radio("Select yolov5 weight file", ["Use our demo model 5s", "Use your own model"])
+    model_src = st.sidebar.radio("Select yolov5 weight file", ["Use our FaceMask Model", "Use your own model"])
     # URL, upload file (max 200 mb)
     if model_src == "Use your own model":
         user_model_path = get_user_model()
@@ -181,15 +242,17 @@ def main():
         st.sidebar.markdown("---")
 
         # input options
-        input_option = st.sidebar.radio("Select input type: ", ['image', 'video'])
+        input_option = st.sidebar.radio("Select input type: ", ['image', 'video', 'webcam'])
 
         # input src option
         data_src = st.sidebar.radio("Select input source: ", ['Sample data', 'Upload your own data'])
 
         if input_option == 'image':
             image_input(data_src)
-        else:
+        elif input_option == 'video':
             video_input(data_src)
+        elif input_option == 'webcam':
+            webcam_input()
 
 
 if __name__ == "__main__":
