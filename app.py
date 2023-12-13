@@ -199,7 +199,7 @@ def main():
     # global variables
     global model, confidence, cfg_model_path
 
-    st.title("Object Recognition Dashboard")
+    st.title("YOLOV5-StreamLit-FMAT")
 
     st.sidebar.title("Settings")
 
